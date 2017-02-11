@@ -2,14 +2,17 @@
   "name": "meals",
   "version": "0.1.0",
   "description": "Feed yourself",
+  "main": "meals.js",
   "dependencies": {
     "module-library": "*",
-    "web-host": "*",
     "web-element": "*",
     "basic-styles": "*"
   },
+  "devDependencies": {
+    "web-host": "*"
+  },
   "scripts": {
-    "start": "node meals"
+    "start": "node start"
   },
   "repository": {
     "type": "git",

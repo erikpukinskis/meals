@@ -1,14 +1,14 @@
 var library = require("module-library")(require)
 
-library.using(
-  ["web-host", "web-element", "basic-styles"],
-  function(host, element, basicStyles) {
+module.exports = library.export(
+  "meals",
+  ["web-element", "basic-styles"],
+  function(element, basicStyles) {
 
-    host.onRequest(function(getPartial) {
-      var bridge = getPartial()
+    function renderMeals(bridge) {
       basicStyles.addTo(bridge)
       bridge.send(page)
-    })
+    }
 
     var cellStyle = element.style(".text-input", {
       "display": "inline-block",
@@ -130,6 +130,7 @@ library.using(
 
     eat(["green"], "beans and cornbread")
 
+    return renderMeals
   }
 )
 
