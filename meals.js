@@ -2,12 +2,18 @@ var library = require("module-library")(require)
 
 module.exports = library.export(
   "meals",
-  ["web-element", "basic-styles"],
-  function(element, basicStyles) {
+  ["web-element", "basic-styles", "browser-bridge"],
+  function(element, basicStyles, BrowserBridge) {
 
     function renderMeals(bridge) {
       basicStyles.addTo(bridge)
       bridge.send(page)
+    }
+
+    renderMeals.prepareSite = function(site) {
+      site.addRoute("get", "/meals", function(request, response) {
+        renderMeals(new BrowserBridge().forResponse(response))
+      })
     }
 
     var cellStyle = element.style(".text-input", {

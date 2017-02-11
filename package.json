@@ -6,7 +6,8 @@
   "dependencies": {
     "module-library": "*",
     "web-element": "*",
-    "basic-styles": "*"
+    "basic-styles": "*",
+    "browser-bridge": "*"
   },
   "devDependencies": {
     "web-host": "*"
