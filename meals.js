@@ -17,8 +17,6 @@ module.exports = library.export(
     }
 
     var cellStyle = element.style(".text-input", {
-      "display": "inline-block",
-      "width": "7em",
       "border-bottom-color": "#aeecf3",
     })
 
@@ -31,7 +29,23 @@ module.exports = library.export(
       "background-color": "#fffff4",
     })
 
-    var page = element(element.stylesheet(cellStyle, foodStyle,mealStyle))
+    var togglePantry = element.style(
+      ".button.toggle-pantry", {
+        "background-color": "transparent",
+        "border": "2px solid #9eeace",
+        "color": "#3b8"
+      }
+    )
+
+    var togglePurchase = element.style(
+      ".button.toggle-purchase", {
+        "background-color": "transparent",
+        "border": "2px solid #9df",
+        "color": "#4cc8ca"
+      }
+    )
+
+    var page = element(element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry))
 
     var preparations = []
     var sides = []
@@ -43,11 +57,14 @@ module.exports = library.export(
       ingredients.forEach(function(ingredient, i) {
 
         var lastOne = i == ingredients.length-1
-        var row = element(".row",
-          element(".text-input", ingredient))
+        var row = element(".row", [
+          element(".text-input.grid-8", ingredient),
+          element(".button.toggle-pantry", "have"),
+          element(".button.toggle-purchase", "need"),
+        ])
 
         if (lastOne) {
-          row.addChild(element(".text-input"+lastSelector, food))
+          row.addChild(element(".text-input.grid-8"+lastSelector, food))
         }
 
         rows.push(row)
@@ -81,12 +98,27 @@ module.exports = library.export(
       page.addChild(elements)
     }
 
-    // Day 1
     prep(["soy beans"], "tempeh")
     prep(["mung beans"], "sprout")
-    prep(["tomatoes"], "rinse")
-    prep(["flour"], "pasta")
 
+
+    // Day 1
+
+    prep(["tomatoes"], "rinse")
+
+    prep([
+      "1/2 cup chickpea flour",
+      "1/8 cup tahini",
+      "1/4 cup silken tofu, pressed half out",
+      "1 Tbsp olive oil",
+      "1/2 tsp kala namak",
+      "1 tsp nutritional yeast",
+      "cheesecloth",
+    ], "vegan egg")
+
+    prep(["1 1/2 cups all-purpose flour", "vegan egg"], "pasta")
+
+    side(["hot chocolate mix"], "cocoa")
     side(["lettuce", "onion"], "salad")
     eat(["porcini", "mushrooms", "garlic"], "ravioli")
 
@@ -98,9 +130,10 @@ module.exports = library.export(
     eat(["scallion", "silken tofu", "ramen", "eggplant", "sesame seeds", "miso"], "ramen")
 
     // Day 3
+    prep(["carrots", "celery", "oats", "hoisin"], "oat paste")
     prep(["beets"], "cook")
     prep(["rice"], "cook")
-    prep(["tempeh", "onion", "tofu", "mung beans"], "veggie patty")
+    prep(["tempeh", "onion", "tofu", "mung beans", "breadcrumbs"], "veggie patty")
     prep(["dough"], "buns")
     prep(["dough"], "bagels")
     prep(["fennel", "nutmeg", "paprika", "thyme", "sage", "veggie bouillon", "gluten", "tempeh", "rice"], "sausage")
@@ -118,11 +151,11 @@ module.exports = library.export(
 
     // day 6        
     prep(["dough"], "pizza dough")
-    prep(["paprika", "garlic", "oregano"], "pepperoni paste")
+    prep(["paprika", "garlic", "oregano", "tempeh"], "pepperoni")
     prep(["tomato"], "drain")
 
     side(["lettuce"], "salad")
-    eat(["olive oil", "tofu", "artichoke", "olives", "miso"], "pizza")
+    eat(["olive oil", "tofu", "artichoke", "olives", "miso", "sauerkraut"], "pizza")
 
     // day 7
     prep(["masa"], "tortillas")
@@ -134,7 +167,14 @@ module.exports = library.export(
     prep(["beans"], "cook")
     prep(["masa", "flour", "sugar"], "corn bread")
 
-    eat(["green"], "beans and cornbread")
+    eat(["greens"], "beans and cornbread")
+
+    // day 9
+    prep(["tomato can"], "rinse")
+    prep(["gluten free crust"], "make")
+    prep(["rice"], "cook")
+    prep(["sauerkraut", "hoisin", "flour", "rice", "mayo", "firm tofu"], "fried cheese")
+    eat(["paprika", "oregano", "olive oil"], "gluten free vegan pizza")
 
     return renderMeals
   }
