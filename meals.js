@@ -8,7 +8,8 @@ library.define(
     var pantries = {}
     var phoneNumbers = {}
 
-    var count = 0
+
+
     function myPantry(id) {
       if (pantries[id]) {
         return pantries[id]
@@ -22,7 +23,6 @@ library.define(
       pantry.statusOf = statusOf.bind(pantry)
       pantry.copyTo = copyTo.bind(pantry)
 
-      count++
 
       if (!pantry.id) {
         identifiable.assignId(pantries, pantry)
@@ -189,8 +189,8 @@ library.define(
 
 module.exports = library.export(
   "meals",
-  ["web-element", "basic-styles", "browser-bridge", "make-request", "phone-person", "./upcoming-meals", "identifiable", "tell-the-universe", "my-pantry", "fill-pantry"],
-  function(element, basicStyles, BrowserBridge, makeRequest, phonePerson, eriksUpcoming, identifiable, tellTheUniverse, myPantry, fillPantry) {
+  ["web-element", "basic-styles", "browser-bridge", "make-request", "phone-person", "./upcoming-meals", "identifiable", "tell-the-universe", "my-pantry", "fill-pantry", "add-html"],
+  function(element, basicStyles, BrowserBridge, makeRequest, phonePerson, eriksUpcoming, identifiable, tellTheUniverse, myPantry, fillPantry, addHtml) {
 
     tellTheUniverse = tellTheUniverse.called("meals").withNames({"myPantry": "my-pantry"})
 
@@ -215,6 +215,7 @@ module.exports = library.export(
           var pantry = new Set()
           pantry.id = options.id
           pantry.isTemporary = options.isTemporary
+          pantry.status = options.status
           return pantry
         }
       )
@@ -228,7 +229,7 @@ module.exports = library.export(
 
       var page = element([
         saveForm(pantry.id),
-        shoppingListOverlay(bridge),
+        shoppingListOverlay(bridge, pantry.shoppingList()),
         week,
         element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle)
       ])
@@ -245,17 +246,25 @@ module.exports = library.export(
       var toggleShoppingList = bridge.defineFunction(function toggleShoppingList() {
         var listEl = document.querySelector(".shopping-list")
         if (listEl.classList.contains("open")) {
-          listEl.classList.add("closed")
+          listEl.classList.add("peek")
           listEl.classList.remove("open")
         } else {
           listEl.classList.add("open")
-          listEl.classList.remove("closed")
+          listEl.classList.remove("peek")
         }
       })
 
       bridge.see("meals/toggleShoppingList", toggleShoppingList)
 
-      var setStatus = bridge.defineFunction([makeRequest.defineOn(bridge), element.defineOn(bridge), bridge.remember("meals/shoppingListSingleton"), bridge.remember("meals/pantrySingleton")], function setStatus(makeRequest, element, shoppingList, pantry, status, tag) {
+
+      var setStatus = bridge.defineFunction([
+        makeRequest.defineOn(bridge),
+        element.defineOn(bridge),
+        addHtml.defineOn(bridge),
+        bridge.remember("meals/shoppingListSingleton"),
+        bridge.remember("meals/pantrySingleton"),
+        bridge.defineFunction(renderListItem)
+      ], function setStatus(makeRequest, element, addHtml, shoppingList, pantry, renderListItem, status, tag) {
 
         var update = {
           status: status,
@@ -263,38 +272,54 @@ module.exports = library.export(
           pantryId: pantry.id
         }
 
+        if (!pantry.status) {
+          throw new Error("no statii?")
+        }
+        var oldStatus = pantry.status[tag]
+
+        if (status == oldStatus) {
+          return
+        }
+
+        pantry.status[tag] = status
+
         makeRequest("/meals/ingredient-status/"+tag, {method: "post", data: update})
+
+        if (status == "need") {
+
+          shoppingList.add(tag)
+          pantry.delete(tag)
+
+          var listItemEl = renderListItem(tag)
+
+          addHtml.inside(".shopping-list-items", listItemEl.html())
+
+        } else if (status == "have") {
+
+          pantry.add(tag)
+          shoppingList.delete(tag)
+
+          if (oldStatus == "need") {
+
+            var shoppingListNode = document.querySelector(".shopping-list-items")
+            var listItemNode = document.querySelector(".shopping-list-item-"+tag)
+
+            shoppingListNode.removeChild(listItemNode)
+          }
+        } else {
+          throw new Error(status+" is a status?")
+        }
+
+
+        var listEl = document.querySelector(".shopping-list")
+        listEl.classList.add("peek")
+
+
 
         var opposite = {
           "have": "need",
           "need": "have",
         }
-
-        if (status == "need") {
-          shoppingList.add(tag)
-          pantry.delete(tag)
-        } else if (status == "have") {
-          pantry.add(tag)
-          shoppingList.delete(tag)
-        }
-
-        var html = ""
-
-        var height = 70 + shoppingList.size*44
-        height = Math.max(300, height)
-
-        shoppingList.forEach(function(tag) {
-          html = element(".shopping-list-item", tag.replace("-", " ")).html() + html
-        })
-
-        var listEl = document.querySelector(".shopping-list")
-        listEl.classList.add("closed")
-
-        listEl.setAttribute("style", "height: "+height+"px; bottom: "+(165 - height).toString()+"px;")
-
-
-
-        document.querySelector(".shopping-list-items").innerHTML = html
 
         document.querySelectorAll("."+status+"-"+tag).forEach(light)
 
@@ -391,7 +416,7 @@ module.exports = library.export(
     }
 
 
-    function shoppingListOverlay(bridge) {
+    function shoppingListOverlay(bridge, tags) {
       var toggle = bridge.remember("meals/toggleShoppingList")
       if (!toggle) {
         throw new Error("boo: "+bridge.id)
@@ -405,11 +430,18 @@ module.exports = library.export(
             ".shopping-list-title",
             "Shopping List"
           ),
-          element(".shopping-list-items"),
+          element(".shopping-list-items", tags.map(renderListItem)),
         ]
       )
 
       return shoppingListEl
+    }
+
+    function renderListItem(tag) {
+      var text = tag.replace("-", " ")
+      var el = element(".shopping-list-item", text)
+      el.addSelector(".shopping-list-item-"+tag)
+      return el
     }
 
     var ruledItem = element.style(".shopping-list-item, .shopping-list-title", {
@@ -426,10 +458,10 @@ module.exports = library.export(
     var shoppingListStyle = element.style(".shopping-list", {
       "position": "fixed",
       "bottom": "-235px",
+      "min-height": "300px",
       "transition": "bottom 100ms",
       "background-color": "white",
       "width": "200px",
-      "height": "300px",
       "line-height": "20px",
       "right": "20px",
       "box-shadow": "0px 2px 10px 5px rgba(138, 193, 179, 0.19)",

@@ -11,7 +11,8 @@
     "make-request": "*",
     "phone-person": "*",
     "identifiable": "*",
-    "tell-the-universe": "*"
+    "tell-the-universe": "*",
+    "add-html": "*"
   },
   "devDependencies": {
     "web-host": "*"
