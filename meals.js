@@ -1,18 +1,326 @@
 var library = require("module-library")(require)
 
+library.define(
+  "my-pantry",
+  ["identifiable"],
+  function(identifiable) {
+
+    var pantries = {}
+
+    var count = 0
+    function newPantry() {
+      var pantry = {
+        status: {},
+        isTemporary: true,
+      }
+      pantry.statusOf = statusOf.bind(pantry)
+
+      count++
+
+      identifiable.assignId(pantries, pantry)
+
+      pantries[pantry.id] = pantry
+
+      return pantry
+    }
+
+    function statusOf(tag) {
+      return this.status[tag]
+    }
+
+    function setIngredientStatus(pantryId, tag, status) {
+      var pantry = get(pantryId)
+      pantry.status[tag] = status
+    }
+
+    var get = identifiable.getFrom(pantries, "pantry")
+
+    function getStatus(pantryId, tag) {
+      var pantry = get(pantryId)
+      return pantry.status[tag]
+    }
+
+
+    newPantry.ingredient = setIngredientStatus
+
+    newPantry.status = getStatus
+
+    return newPantry
+  }
+)
+
+
+
+
+
+
+library.define(
+  "fill-pantry", 
+  ["web-element", "./dashify"],
+  function(element, dashify) {
+
+    function fillPantry(func, pantry) {
+
+      var week = {
+        preparations: [],
+        sides: [],
+        day: 1,
+        pantry: pantry,
+        page: element()
+      }
+
+      if (!pantry || !pantry.id) {
+        throw new Error("Pantryyyyyyyyy")
+      }
+
+      func(prep.bind(week), eat.bind(week), side.bind(week))
+
+      return week.page
+    }
+
+    function prep(ingredients, food) {
+      this.preparations.push(renderRows(bridge, ingredients, food, ".food", this.pantry))
+    }
+
+    function side(ingredients, dish) {
+      this.sides.push(renderRows(bridge, ingredients, dish, ".meal.food", this.pantry))
+    }
+
+    function eat(ingredients, meal) {
+
+      var elements = [
+        element("h1", "Day "+this.day),
+        this.preparations,
+        element("br"),
+        this.sides,
+        renderRows(bridge, ingredients, meal, ".meal.food", this.pantry)
+      ]
+
+      this.preparations = []
+      this.sides = []
+      this.day++
+
+      this.page.addChild(elements)
+    }
+
+    function renderRows(bridge, ingredients, food, lastSelector, pantry) {
+
+      if (!pantry) {
+        throw new Error("Pannnntryyyyy")
+      }
+
+      var rows = []
+
+      ingredients.forEach(function(ingredient, i) {
+
+        var tag = dashify(removeQuantity(ingredient))
+        var lastOne = i == ingredients.length-1
+
+        var status = pantry.statusOf(tag)
+
+        console.log("renderRows on", pantry.id, "status of", tag, "is", status)
+
+        var haveButton =           element(".button.toggle-pantry.have-"+tag, "have", {onclick: bridge.remember("meals/have").withArgs(tag).evalable()})
+
+        if (status == "have") {
+          haveButton.addSelector(".lit")
+        }
+
+        var needButton = element(".button.toggle-purchase.need-"+tag, "need", {onclick: bridge.remember("meals/need").withArgs(tag).evalable()})
+
+        if (status == "need") {
+          needButton.addSelector(".lit")
+        }
+
+        var row = element(".row", [
+          element(".text-input.grid-8", ingredient),
+          haveButton,
+          needButton,
+        ])
+
+
+
+        if (lastOne) {
+          row.addChild(element(".text-input.grid-8"+lastSelector, food))
+        }
+
+        rows.push(row)
+      })
+
+      return rows
+    }
+
+    function removeQuantity(ingredient) {
+      return ingredient.replace(/^[0-9]? ?[0-9]?\/?[0-9]? ?(cups|Tbsp|tsp|cup) ?/, "")
+    }
+
+    return fillPantry
+  }
+)
+
+
+
+
+
+
 module.exports = library.export(
   "meals",
-  ["web-element", "basic-styles", "browser-bridge", "./dashify", "make-request", "phone-person", "./upcoming-meals"],
-  function(element, basicStyles, BrowserBridge, dashify, makeRequest, phonePerson, upcomingMeals) {
+  ["web-element", "basic-styles", "browser-bridge", "make-request", "phone-person", "./upcoming-meals", "identifiable", "tell-the-universe", "my-pantry", "fill-pantry"],
+  function(element, basicStyles, BrowserBridge, makeRequest, phonePerson, eriksUpcoming, identifiable, tellTheUniverse, myPantry, fillPantry) {
+
+    tellTheUniverse = tellTheUniverse.called("meals").withNames({"myPantry": "my-pantry"})
+
+
+
+
+    function renderMeals(bridge) {
+
+      basicStyles.addTo(bridge)
+
+      var pantry = myPantry()
+
+      var listSingleton = bridge.defineSingleton("shoppingList", function newShoppingList() { return new Set() })
+
+      bridge.see("meals/shoppingListSingleton", listSingleton)
+
+      var pantrySingleton = bridge.defineSingleton(
+        "pantry",
+        [pantry],
+        function newPantry(options) {
+          var pantry = new Set()
+          pantry.id = options.id
+          console.log("sat pantry id to", pantry.id)
+          pantry.isTemporary = options.isTemporary
+          return pantry
+        }
+      )
+
+      bridge.see("meals/pantrySingleton", pantrySingleton)
+
+      prepareBridge(bridge)
+
+      var week = fillPantry(eriksUpcoming, pantry)
+
+
+      var page = element([
+        saveForm(),
+        shoppingListOverlay(bridge),
+        week,
+        element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle)
+      ])
+
+      bridge.send(page)
+    }
+
+    renderMeals.prepareBridge = prepareBridge
+
+
+    function prepareBridge(bridge) {
+      if (bridge.remember("meals/have")) return
+
+      var toggleShoppingList = bridge.defineFunction(function toggleShoppingList() {
+        var listEl = document.querySelector(".shopping-list")
+        if (listEl.classList.contains("open")) {
+          listEl.classList.add("closed")
+          listEl.classList.remove("open")
+        } else {
+          listEl.classList.add("open")
+          listEl.classList.remove("closed")
+        }
+      })
+
+      bridge.see("meals/toggleShoppingList", toggleShoppingList)
+
+      var setStatus = bridge.defineFunction([makeRequest.defineOn(bridge), element.defineOn(bridge), bridge.remember("meals/shoppingListSingleton"), bridge.remember("meals/pantrySingleton")], function setStatus(makeRequest, element, shoppingList, pantry, status, tag) {
+
+        var update = {
+          status: status,
+          isTemporary: pantry.isTemporary,
+          pantryId: pantry.id
+        }
+
+        console.log("pantry id is", pantry.id)
+
+        makeRequest("/meals/ingredient-status/"+tag, {method: "post", data: update})
+
+        var opposite = {
+          "have": "need",
+          "need": "have",
+        }
+
+        if (status == "need") {
+          shoppingList.add(tag)
+          pantry.delete(tag)
+        } else if (status == "have") {
+          pantry.add(tag)
+          shoppingList.delete(tag)
+        }
+
+        var html = ""
+
+        var height = 70 + shoppingList.size*44
+        height = Math.max(300, height)
+
+        shoppingList.forEach(function(tag) {
+          html = element(".shopping-list-item", tag.replace("-", " ")).html() + html
+        })
+
+        var listEl = document.querySelector(".shopping-list")
+        listEl.classList.add("closed")
+
+        listEl.setAttribute("style", "height: "+height+"px; bottom: "+(165 - height).toString()+"px;")
+
+
+
+        document.querySelector(".shopping-list-items").innerHTML = html
+
+        document.querySelectorAll("."+status+"-"+tag).forEach(light)
+
+        function light(el) {
+          el.classList.add("lit")
+        }
+
+        document.querySelectorAll("."+opposite[status]+"-"+tag).forEach(unlight)
+
+        function unlight(el) {
+          el.classList.remove("lit")
+        }
+      })
+
+      bridge.see("meals/have", setStatus.withArgs("have"))
+
+      bridge.see("meals/need",
+        setStatus.withArgs("need"))
+      
+    }
+
+    renderMeals.prepareSite = prepareSite
 
     function prepareSite(site) {
       site.addRoute("get", "/meals", function(request, response) {
         renderMeals(new BrowserBridge().forResponse(response))
       })
 
-      site.addRoute("post", "/ingredients/:tag/:status", function(request, response) {       
+// API:
+//   /meals/ingredient-status/dai-kon {
+//     pantryId: "temp-34a1",
+//     isTemporary: true,
+//     status: "have", // or "need"
+//   }
+
+      site.addRoute("post", "/meals/ingredient-status/:tag", function(request, response) {       
+        var status = request.body.status
+        var isPermanent = !request.body.isTemporary
+        var pantryId = request.body.pantryId
         var tag = request.params.tag
-        var status = request.params.status
+
+        myPantry.ingredient(pantryId, tag, status)
+
+        console.log("on", pantryId, "status of", tag, "is", status)
+
+        if (isPermanent) {
+          tellTheUniverse("myPantry.ingredient", pantryId, tag, status)
+        }
 
         response.json({ok: "yes"})
       })
@@ -32,79 +340,35 @@ module.exports = library.export(
     }
 
 
-    function renderMeals(bridge) {
-      basicStyles.addTo(bridge)
-
-
-      var saveForm = element("form", {method: "post", action: "/meals/pantries"}, [
+    function saveForm() {
+      return element("form", {method: "post", action: "/meals/pantries"}, [
         element("p", "Text a link to yourself to save your pantry:"),
         element("input", {type: "text", name: "phoneNumber", placeholder: "Phone number or email"}),
         element("input", {type: "submit", value: "Text me"}, element.style({"margin-top": "10px"})),
       ])
-
-      var toggleListPosition = bridge.defineFunction(function() {
-        var listEl = document.querySelector(".shopping-list")
-        if (listEl.classList.contains("open")) {
-          listEl.classList.add("closed")
-          listEl.classList.remove("open")
-        } else {
-          listEl.classList.add("open")
-          listEl.classList.remove("closed")
-        }
-      })
-
-      var title = element(
-        ".shopping-list-title",
-        "Shopping List"
-      )
-
-      var list = element(
-        ".shopping-list",
-        {onclick: toggleListPosition.evalable()},
-        [title, element(".shopping-list-items")]
-      )
-
-      var page = element(saveForm, list, element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle))
-
-      var preparations = []
-      var sides = []
-      var day = 1
-
-      function prep(ingredients, food) {
-        preparations.push(renderRows(bridge, ingredients, food, ".food"))
-      }
-
-      function side(ingredients, dish) {
-        sides.push(renderRows(bridge, ingredients, dish, ".meal.food"))
-      }
-
-      function eat(ingredients, meal) {
-
-        var elements = [
-          element("h1", "Day "+day),
-          preparations,
-          element("br"),
-          sides,
-          renderRows(bridge, ingredients, meal, ".meal.food")
-        ]
-
-        preparations = []
-        sides = []
-        day++
-        page.addChild(elements)
-      }
-
-      upcomingMeals(prep, eat, side)
-
-
-      bridge.send(page)
     }
 
 
+    function shoppingListOverlay(bridge) {
+      var toggle = bridge.remember("meals/toggleShoppingList")
+      if (!toggle) {
+        throw new Error("boo: "+bridge.id)
+      }
 
+      var shoppingListEl = element(
+        ".shopping-list",
+        {onclick: toggle.evalable()},
+        [
+          element(
+            ".shopping-list-title",
+            "Shopping List"
+          ),
+          element(".shopping-list-items"),
+        ]
+      )
 
-
-    renderMeals.prepareSite = prepareSite
+      return shoppingListEl
+    }
 
     var ruledItem = element.style(".shopping-list-item, .shopping-list-title", {
       "border-bottom": "2px solid #c3ebff",
@@ -126,7 +390,7 @@ module.exports = library.export(
       "height": "300px",
       "line-height": "20px",
       "right": "20px",
-      "box-shadow": "0px 2px 10px 5px rgba(195, 255, 240, 0.58)",
+      "box-shadow": "0px 2px 10px 5px rgba(138, 193, 179, 0.19)",
       "color": "#df",
       "cursor": "pointer",
 
@@ -171,7 +435,6 @@ module.exports = library.export(
       }
     )
 
-
     var togglePurchase = element.style(
       ".button.toggle-purchase", {
         "background-color": "transparent",
@@ -185,105 +448,6 @@ module.exports = library.export(
       }
     )
 
-    function prepareBridge(bridge) {
-      if (bridge.remember("meals/have")) return
-
-      var list = bridge.defineSingleton("shoppingList", function list() {
-        return new Set()
-      })
-
-      var pantry = bridge.defineSingleton("pantry", function pantry() {
-        return new Set()
-      })
-
-      var setStatus = bridge.defineFunction([makeRequest.defineOn(bridge), element.defineOn(bridge), list, pantry], function setStatus(makeRequest, element, shoppingList, pantry, status, tag) {
-
-        // makeRequest("/ingredients/"+tag+"/"+status, {method: "post"})
-
-        var opposite = {
-          "have": "need",
-          "need": "have",
-        }
-
-        if (status == "need") {
-          shoppingList.add(tag)
-          pantry.delete(tag)
-        } else if (status == "have") {
-          pantry.add(tag)
-          shoppingList.delete(tag)
-        }
-
-        var html = ""
-
-        var height = 70 + shoppingList.size*44
-        console.log("height", height)
-        height = Math.max(300, height)
-
-        shoppingList.forEach(function(tag) {
-          html = element(".shopping-list-item", tag.replace("-", " ")).html() + html
-        })
-
-        var listEl = document.querySelector(".shopping-list")
-        listEl.classList.add("closed")
-        
-        listEl.setAttribute("style", "height: "+height+"px; bottom: "+(165 - height).toString()+"px;")
-
-
-
-        document.querySelector(".shopping-list-items").innerHTML = html
-
-        document.querySelectorAll("."+status+"-"+tag).forEach(light)
-
-        function light(el) {
-          el.classList.add("lit")
-        }
-
-        document.querySelectorAll("."+opposite[status]+"-"+tag).forEach(unlight)
-
-        function unlight(el) {
-          el.classList.remove("lit")
-        }
-      })
-
-      bridge.see("meals/have", setStatus.withArgs("have"))
-
-      bridge.see("meals/need",
-        setStatus.withArgs("need"))
-      
-    }
-
-    function removeQuantity(ingredient) {
-      return ingredient.replace(/^[0-9]? ?[0-9]?\/?[0-9]? ?(cups|Tbsp|tsp|cup) ?/, "")
-    }
-
-    function renderRows(bridge, ingredients, food, lastSelector) {
-
-      prepareBridge(bridge)
-
-      var rows = []
-
-      ingredients.forEach(function(ingredient, i) {
-
-        var tag = dashify(removeQuantity(ingredient))
-        var lastOne = i == ingredients.length-1
-
-        var row = element(".row", [
-          element(".text-input.grid-8", ingredient),
-          element(".button.toggle-pantry.have-"+tag, "have", {onclick: bridge.remember("meals/have").withArgs(tag).evalable()}),
-          element(".button.toggle-purchase.need-"+tag, "need", {onclick: bridge.remember("meals/need").withArgs(tag).evalable()}),
-        ])
-
-
-
-        if (lastOne) {
-          row.addChild(element(".text-input.grid-8"+lastSelector, food))
-        }
-
-        rows.push(row)
-      })
-
-      return rows
-    }
 
 
     return renderMeals

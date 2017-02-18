@@ -9,7 +9,9 @@
     "basic-styles": "*",
     "browser-bridge": "*",
     "make-request": "*",
-    "phone-person": "*"
+    "phone-person": "*",
+    "identifiable": "*",
+    "tell-the-universe": "*"
   },
   "devDependencies": {
     "web-host": "*"
