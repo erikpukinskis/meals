@@ -64,7 +64,7 @@ module.exports = library.export(
         [title, element(".shopping-list-items")]
       )
 
-      var page = element(saveForm, list, element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, listStyle, listTitleStyle))
+      var page = element(saveForm, list, element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle))
 
       var preparations = []
       var sides = []
@@ -106,9 +106,9 @@ module.exports = library.export(
 
     renderMeals.prepareSite = prepareSite
 
-    var listStyle = element.style(".shopping-list-item, .shopping-list-title", {
+    var ruledItem = element.style(".shopping-list-item, .shopping-list-title", {
       "border-bottom": "2px solid #c3ebff",
-      "color": "#698",
+      "color": "#6be",
       "padding": "10px 20px",
     })
 
@@ -134,7 +134,7 @@ module.exports = library.export(
         "left": "500px",
       },
 
-      ".closed": {
+      ".peek": {
         "height": "300px !important",
         "bottom": "-100px !important",
       },
@@ -176,7 +176,7 @@ module.exports = library.export(
       ".button.toggle-purchase", {
         "background-color": "transparent",
         "border": "2px solid #9df",
-        "color": "#4cc8ca",
+        "color": "#6be",
 
         ".lit": {
           "background-color": "#9df",
@@ -224,6 +224,8 @@ module.exports = library.export(
         })
 
         var listEl = document.querySelector(".shopping-list")
+        listEl.classList.add("closed")
+        
         listEl.setAttribute("style", "height: "+height+"px; bottom: "+(165 - height).toString()+"px;")
 
 
