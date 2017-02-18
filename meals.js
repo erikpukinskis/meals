@@ -183,9 +183,13 @@ module.exports = library.export(
       "width": "200px",
       "height": "400px",
       "line-height": "20px",
-      "left": "40%",
+      "right": "20px",
       "box-shadow": "0px 2px 10px 5px rgba(195, 255, 240, 0.58)",
       "color": "#df",
+
+      "@media (min-width: 720px)": {
+        "left": "500px",
+      },
 
       ".peek": {
         "bottom": "-200px",
