@@ -232,52 +232,55 @@ module.exports = library.export(
       }
     )
 
+    function prepareBridge(bridge) {
+      if (bridge.remember("meals/have")) return
+
+      var list = bridge.defineSingleton("shoppingList", function() {
+        return new Set()
+      })
+
+      var setStatus = bridge.defineFunction([makeRequest.defineOn(bridge), element.defineOn(bridge), list], function setStatus(makeRequest, element, shoppingList, status, tag) {
+
+        makeRequest("/ingredients/"+tag+"/"+status, {method: "post"})
+
+        var opposite = {
+          "have": "need",
+          "need": "have",
+        }
+
+        if (status == "need") {
+          shoppingList.add(tag)
+        } else {
+          shoppingList.delete(tag)
+        }
+
+        console.log("list is", shoppingList)
+        var html = ""
+
+        shoppingList.forEach(function(tag) {
+          html += element(".shopping-list-item", tag.replace("-", " ")).html()
+        })
+
+        document.querySelector(".shopping-list").classList.add("peek")
+
+        document.querySelector(".shopping-list-items").innerHTML = html
+
+        document.querySelector("."+status+"-"+tag).classList.add("lit")
+
+        document.querySelector("."+opposite[status]+"-"+tag).classList.remove("lit")
+      })
+
+      bridge.see("meals/have", setStatus.withArgs("have"))
+
+      bridge.see("meals/need",
+        setStatus.withArgs("need"))
+      
+    }
+
     function renderRows(bridge, ingredients, food, lastSelector) {
 
-      if (!bridge.remember("meals/have")) {
+      prepareBridge(bridge)
 
-        var list = bridge.defineSingleton("shoppingList", function() {
-          return new Set()
-        })
-
-        var setStatus = bridge.defineFunction([makeRequest.defineOn(bridge), element.defineOn(bridge), list], function setStatus(makeRequest, element, shoppingList, status, tag) {
-
-          makeRequest("/ingredients/"+tag+"/"+status, {method: "post"})
-
-          var opposite = {
-            "have": "need",
-            "need": "have",
-          }
-
-          if (status == "need") {
-            shoppingList.add(tag)
-          } else {
-            shoppingList.delete(tag)
-          }
-
-          console.log("list is", shoppingList)
-          var html = ""
-
-          shoppingList.forEach(function(tag) {
-            html += element(".shopping-list-item", tag.replace("-", " ")).html()
-          })
-
-          document.querySelector(".shopping-list").classList.add("peek")
-
-          document.querySelector(".shopping-list-items").innerHTML = html
-
-          document.querySelector("."+status+"-"+tag).classList.add("lit")
-
-          document.querySelector("."+opposite[status]+"-"+tag).classList.remove("lit")
-        })
-
-        bridge.see("meals/have", setStatus.withArgs("have"))
-
-        bridge.see("meals/need",
-          setStatus.withArgs("need"))
-
-      }
-      
       var rows = []
 
       ingredients.forEach(function(ingredient, i) {
@@ -290,6 +293,8 @@ module.exports = library.export(
           element(".button.toggle-pantry.have-"+tag, "have", {onclick: bridge.remember("meals/have").withArgs(tag).evalable()}),
           element(".button.toggle-purchase.need-"+tag, "need", {onclick: bridge.remember("meals/need").withArgs(tag).evalable()}),
         ])
+
+
 
         if (lastOne) {
           row.addChild(element(".text-input.grid-8"+lastSelector, food))
