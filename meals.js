@@ -9,20 +9,36 @@ library.define(
     var phoneNumbers = {}
 
 
+    function Pantry(id) {
+      this.id = id
+      this.statusByTag = {}
+      this.tagsByStatus = {have: {}, need: {}}
+    }
+
+    Pantry.prototype.copyTo = function copyTo(tellUniverse) {
+      tellUniverse("myPantry", this.id)
+
+      for(var ingredient in this.statusByTag) {
+        var status = this.statusByTag[ingredient]
+        tellUniverse("myPantry.ingredient", this.id, ingredient, status)
+      }
+    }
+
+    Pantry.prototype.statusOf = function statusOf(tag) {
+      return this.statusByTag[tag]
+    }
+
+    Pantry.prototype.shoppingList = function() {
+      return Object.keys(this.tagsByStatus.need)
+    }
+
 
     function myPantry(id) {
       if (pantries[id]) {
         return pantries[id]
       }
 
-      var pantry = {
-        id:id,
-        status: {},
-        isTemporary: true,
-      }
-      pantry.statusOf = statusOf.bind(pantry)
-      pantry.copyTo = copyTo.bind(pantry)
-
+      var pantry = new Pantry(id)
 
       if (!pantry.id) {
         identifiable.assignId(pantries, pantry)
@@ -33,35 +49,34 @@ library.define(
       return pantry
     }
 
-    function copyTo(tellUniverse) {
-      tellUniverse("myPantry", this.id)
-
-      for(var ingredient in this.status) {
-        var status = this.status[ingredient]
-        tellUniverse("myPantry.status", this.id, ingredient, status)
-      }
-    }
-
-    function statusOf(tag) {
-      return this.status[tag]
+    var opposite = {
+      have: "need",
+      need: "have",
     }
 
     function setIngredientStatus(pantryId, tag, status) {
       var pantry = get(pantryId)
-      pantry.status[tag] = status
+      var oldStatus = pantry.statusByTag[tag]
+      if (status == oldStatus) {
+        return
+      }
+      pantry.statusByTag[tag] = status
+      pantry.tagsByStatus[status][tag] = true
+
+      delete pantry.tagsByStatus[opposite[status]][tag]
     }
 
     var get = identifiable.getFrom(pantries, "pantry")
 
     function getStatus(pantryId, tag) {
       var pantry = get(pantryId)
-      return pantry.status[tag]
+      return pantry.statusByTag[tag]
     }
 
 
     myPantry.ingredient = setIngredientStatus
 
-    myPantry.status = getStatus
+    myPantry.get = identifiable.getFrom(pantries, "pantry")
 
     myPantry.suggestPhone = function suggestPhone(pantryId, number) {
       if (phoneNumbers[pantryId]) {
@@ -194,7 +209,9 @@ module.exports = library.export(
 
     tellTheUniverse = tellTheUniverse.called("meals").withNames({"myPantry": "my-pantry"})
 
-    tellTheUniverse.load()
+    tellTheUniverse.load(function() {
+      console.log("universe is ready")
+    })
 
     function renderMeals(bridge, pantry) {
 
@@ -202,6 +219,7 @@ module.exports = library.export(
 
       if (!pantry) {
        pantry = myPantry()
+       pantry.isTemporary = true
       }
 
       var listSingleton = bridge.defineSingleton("shoppingList", function newShoppingList() { return new Set() })
@@ -215,7 +233,7 @@ module.exports = library.export(
           var pantry = new Set()
           pantry.id = options.id
           pantry.isTemporary = options.isTemporary
-          pantry.status = options.status
+          pantry.statusByTag = options.statusByTag
           return pantry
         }
       )
@@ -227,8 +245,13 @@ module.exports = library.export(
       var week = fillPantry(bridge, eriksUpcoming, pantry)
 
 
-      var page = element([
-        saveForm(pantry.id),
+      var page = element()
+
+      if (pantry.isTemporary) {
+        page.addChild(saveForm(pantry.id))
+      }
+
+      page.addChildren([
         shoppingListOverlay(bridge, pantry.shoppingList()),
         week,
         element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle)
@@ -272,16 +295,16 @@ module.exports = library.export(
           pantryId: pantry.id
         }
 
-        if (!pantry.status) {
+        if (!pantry.statusByTag) {
           throw new Error("no statii?")
         }
-        var oldStatus = pantry.status[tag]
+        var oldStatus = pantry.statusByTag[tag]
 
         if (status == oldStatus) {
-          return
+          status = undefined
         }
 
-        pantry.status[tag] = status
+        pantry.statusByTag[tag] = status
 
         makeRequest("/meals/ingredient-status/"+tag, {method: "post", data: update})
 
@@ -300,21 +323,31 @@ module.exports = library.export(
           shoppingList.delete(tag)
 
           if (oldStatus == "need") {
-
-            var shoppingListNode = document.querySelector(".shopping-list-items")
-            var listItemNode = document.querySelector(".shopping-list-item-"+tag)
-
-            shoppingListNode.removeChild(listItemNode)
+            removeShoppingItem(tag)
           }
+        } else if (status == undefined) {
+          pantry.delete(tag)
+          shoppingList.delete(tag)
+          if (oldStatus == "need") {
+            removeShoppingItem(tag)
+          }
+          document.querySelectorAll("."+oldStatus+"-"+tag).forEach(unlight)
         } else {
           throw new Error(status+" is a status?")
         }
 
 
+        function removeShoppingItem(tag) {
+          var shoppingListNode = document.querySelector(".shopping-list-items")
+          var listItemNode = document.querySelector(".shopping-list-item-"+tag)
+          shoppingListNode.removeChild(listItemNode)
+        }
+
         var listEl = document.querySelector(".shopping-list")
-        listEl.classList.add("peek")
 
-
+        if (!listEl.classList.contains("open")) {
+          listEl.classList.add("peek")
+        }
 
         var opposite = {
           "have": "need",
@@ -372,7 +405,7 @@ module.exports = library.export(
 
       site.addRoute("get", "/pantries/:id", function(request, response) {
 
-        var pantry = myPantry(request.params.id)
+        var pantry = myPantry.get(request.params.id)
 
         var bridge = new BrowserBridge().forResponse(response)
 
@@ -408,6 +441,7 @@ module.exports = library.export(
 
     function saveForm(pantryId) {
       return element("form", {method: "post", action: "/pantries"}, [
+        element("input", {type: "text", value: "My pantry"}),
         element("p", "Text a link to yourself to save your pantry:"),
         element("input", {type: "text", name: "phoneNumber", placeholder: "Phone number or email"}),
         element("input", {type: "hidden", name: "pantryId", value: pantryId}),
@@ -425,14 +459,16 @@ module.exports = library.export(
       var shoppingListEl = element(
         ".shopping-list",
         {onclick: toggle.evalable()},
-        [
-          element(
-            ".shopping-list-title",
-            "Shopping List"
-          ),
-          element(".shopping-list-items", tags.map(renderListItem)),
-        ]
+        element(
+          ".shopping-list-title",
+          "Shopping List"
+        ),
+        element(".shopping-list-items", tags.map(renderListItem))
       )
+
+      if (tags.length > 0) {
+        shoppingListEl.addSelector(".peek")
+      }
 
       return shoppingListEl
     }
