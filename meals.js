@@ -64,13 +64,13 @@ module.exports = library.export(
 
       // Long term prep
 
-      prep(["soy beans"], "tempeh")
-      prep(["mung beans"], "sprout")
+      prep(["soy beans"], "make tempeh")
+      prep(["mung beans"], "sprout them")
 
 
       // Day 1
 
-      prep(["tomatoes"], "rinse")
+      prep(["tomatoes"], "rinse and drain")
 
       prep([
         "1/2 cup chickpea flour",
@@ -80,30 +80,30 @@ module.exports = library.export(
         "1/2 tsp kala namak",
         "1 tsp nutritional yeast",
         "cheesecloth",
-      ], "vegan egg")
+      ], "mix vegan egg")
 
-      prep(["1 1/2 cups all-purpose flour", "vegan egg"], "pasta") // Dough: https://www.youtube.com/watch?v=ESz55eORW44
+      prep(["1 1/2 cups all-purpose flour", "vegan egg"], "make pasta") // Dough: https://www.youtube.com/watch?v=ESz55eORW44
 
       side(["hot chocolate mix"], "cocoa")
       side(["lettuce", "onion"], "salad")
       eat(["porcini", "mushrooms", "garlic"], "ravioli")
 
       // Day 2
-      prep(["shitake", "porcini", "kombu", "carrot"], "broth")
-      prep(["napa", "daikon", "korean paprika"], "kimchi")
-      prep(["flour"], "dough")
+      prep(["shitake", "porcini", "kombu", "carrot"], "make broth")
+      prep(["napa", "daikon", "korean paprika"], "prep kimchi")
+      prep(["flour"], "make dough")
 
       eat(["scallion", "silken tofu", "ramen", "eggplant", "sesame seeds", "miso"], "ramen")
 
       // Day 3
-      prep(["carrots", "celery", "oats", "hoisin"], "oat paste")
+      prep(["carrots", "celery", "oats", "hoisin"], "make oat paste")
       prep(["beets"], "cook")
       prep(["rice"], "cook")
-      prep(["tempeh", "onion", "tofu", "mung beans", "breadcrumbs"], "veggie patty")
-      prep(["dough"], "buns")
-      prep(["dough"], "bagels")
-      prep(["fennel", "nutmeg", "paprika", "thyme", "sage", "veggie bouillon", "gluten", "tempeh", "rice"], "sausage")
-      prep(["flour"], "waffle batter")
+      prep(["tempeh", "onion", "tofu", "mung beans", "breadcrumbs"], "prep veggie patty")
+      prep(["dough"], "bake buns")
+      prep(["dough"], "bake bagels")
+      prep(["fennel", "nutmeg", "paprika", "thyme", "sage", "veggie bouillon", "gluten", "tempeh", "rice"], "prep sausage")
+      prep(["flour"], "make waffle batter")
 
       eat(["lettuce", "tomato", "onion", "mayo", "mustart", "potato"], "veggie burger and fries")
 
@@ -157,10 +157,8 @@ module.exports = library.export(
         renderMeals(new BrowserBridge().forResponse(response))
       })
 
-      site.addRoute("post", "/ingredients/:tag/:status", function(request, response) {
-
-        console.log(request.params.status, request.params.tag)
-        response.send({ok: "yes"})
+      site.addRoute("post", "/ingredients/:tag/:status", function(request, response) {        
+        response.json({ok: "yes"})
       })
     }
 
