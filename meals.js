@@ -6,22 +6,40 @@ library.define(
   function(identifiable) {
 
     var pantries = {}
+    var phoneNumbers = {}
 
     var count = 0
-    function newPantry() {
+    function myPantry(id) {
+      if (pantries[id]) {
+        return pantries[id]
+      }
+
       var pantry = {
+        id:id,
         status: {},
         isTemporary: true,
       }
       pantry.statusOf = statusOf.bind(pantry)
+      pantry.copyTo = copyTo.bind(pantry)
 
       count++
 
-      identifiable.assignId(pantries, pantry)
+      if (!pantry.id) {
+        identifiable.assignId(pantries, pantry)
+      }
 
       pantries[pantry.id] = pantry
 
       return pantry
+    }
+
+    function copyTo(tellUniverse) {
+      tellUniverse("myPantry", this.id)
+
+      for(var ingredient in this.status) {
+        var status = this.status[ingredient]
+        tellUniverse("myPantry.status", this.id, ingredient, status)
+      }
     }
 
     function statusOf(tag) {
@@ -41,11 +59,18 @@ library.define(
     }
 
 
-    newPantry.ingredient = setIngredientStatus
+    myPantry.ingredient = setIngredientStatus
 
-    newPantry.status = getStatus
+    myPantry.status = getStatus
 
-    return newPantry
+    myPantry.suggestPhone = function suggestPhone(pantryId, number) {
+      if (phoneNumbers[pantryId]) {
+        throw new Error("Can't add a new number after you already associated a pantry with a number")
+      }
+      phoneNumbers[pantryId] = number
+    }
+
+    return myPantry
   }
 )
 
@@ -59,14 +84,15 @@ library.define(
   ["web-element", "./dashify"],
   function(element, dashify) {
 
-    function fillPantry(func, pantry) {
+    function fillPantry(bridge, func, pantry) {
 
       var week = {
         preparations: [],
         sides: [],
         day: 1,
         pantry: pantry,
-        page: element()
+        page: element(),
+        bridge: bridge,
       }
 
       if (!pantry || !pantry.id) {
@@ -79,11 +105,11 @@ library.define(
     }
 
     function prep(ingredients, food) {
-      this.preparations.push(renderRows(bridge, ingredients, food, ".food", this.pantry))
+      this.preparations.push(renderRows(this.bridge, ingredients, food, ".food", this.pantry))
     }
 
     function side(ingredients, dish) {
-      this.sides.push(renderRows(bridge, ingredients, dish, ".meal.food", this.pantry))
+      this.sides.push(renderRows(this.bridge, ingredients, dish, ".meal.food", this.pantry))
     }
 
     function eat(ingredients, meal) {
@@ -93,7 +119,7 @@ library.define(
         this.preparations,
         element("br"),
         this.sides,
-        renderRows(bridge, ingredients, meal, ".meal.food", this.pantry)
+        renderRows(this.bridge, ingredients, meal, ".meal.food", this.pantry)
       ]
 
       this.preparations = []
@@ -117,8 +143,6 @@ library.define(
         var lastOne = i == ingredients.length-1
 
         var status = pantry.statusOf(tag)
-
-        console.log("renderRows on", pantry.id, "status of", tag, "is", status)
 
         var haveButton =           element(".button.toggle-pantry.have-"+tag, "have", {onclick: bridge.remember("meals/have").withArgs(tag).evalable()})
 
@@ -170,14 +194,15 @@ module.exports = library.export(
 
     tellTheUniverse = tellTheUniverse.called("meals").withNames({"myPantry": "my-pantry"})
 
+    tellTheUniverse.load()
 
-
-
-    function renderMeals(bridge) {
+    function renderMeals(bridge, pantry) {
 
       basicStyles.addTo(bridge)
 
-      var pantry = myPantry()
+      if (!pantry) {
+       pantry = myPantry()
+      }
 
       var listSingleton = bridge.defineSingleton("shoppingList", function newShoppingList() { return new Set() })
 
@@ -189,7 +214,6 @@ module.exports = library.export(
         function newPantry(options) {
           var pantry = new Set()
           pantry.id = options.id
-          console.log("sat pantry id to", pantry.id)
           pantry.isTemporary = options.isTemporary
           return pantry
         }
@@ -199,11 +223,11 @@ module.exports = library.export(
 
       prepareBridge(bridge)
 
-      var week = fillPantry(eriksUpcoming, pantry)
+      var week = fillPantry(bridge, eriksUpcoming, pantry)
 
 
       var page = element([
-        saveForm(),
+        saveForm(pantry.id),
         shoppingListOverlay(bridge),
         week,
         element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle)
@@ -238,8 +262,6 @@ module.exports = library.export(
           isTemporary: pantry.isTemporary,
           pantryId: pantry.id
         }
-
-        console.log("pantry id is", pantry.id)
 
         makeRequest("/meals/ingredient-status/"+tag, {method: "post", data: update})
 
@@ -316,8 +338,6 @@ module.exports = library.export(
 
         myPantry.ingredient(pantryId, tag, status)
 
-        console.log("on", pantryId, "status of", tag, "is", status)
-
         if (isPermanent) {
           tellTheUniverse("myPantry.ingredient", pantryId, tag, status)
         }
@@ -325,25 +345,47 @@ module.exports = library.export(
         response.json({ok: "yes"})
       })
 
-      site.addRoute("post", "/meals/pantries", function(request, response) {
+      site.addRoute("get", "/pantries/:id", function(request, response) {
+
+        var pantry = myPantry(request.params.id)
+
+        var bridge = new BrowserBridge().forResponse(response)
+
+        renderMeals(bridge, pantry)
+      })
+
+      site.addRoute("post", "/pantries", function(request, response) {
 
         var number = request.body.phoneNumber
+        var id = request.body.pantryId
 
-        inPantry(number, pantry)
+        if (!id) {
+          throw new Error("PANTRYYY")
+        }
+        var pantry = myPantry(id)
+
+        pantry.isTemporary = false
+
+        pantry.copyTo(tellTheUniverse)
+
+        myPantry.suggestPhone(pantry.id, number)
+
+        tellTheUniverse("myPantry.suggestPhone", pantry.id, number)
+
+        response.redirect("/pantries/"+pantry.id)
 
         var shopper = phonePerson(number)
 
-
-
-        response.send("ok")
+        // shopper.send("Just created your pantry at http://ezjs.co/meals/"+pantry.id)
       })
     }
 
 
-    function saveForm() {
-      return element("form", {method: "post", action: "/meals/pantries"}, [
+    function saveForm(pantryId) {
+      return element("form", {method: "post", action: "/pantries"}, [
         element("p", "Text a link to yourself to save your pantry:"),
         element("input", {type: "text", name: "phoneNumber", placeholder: "Phone number or email"}),
+        element("input", {type: "hidden", name: "pantryId", value: pantryId}),
         element("input", {type: "submit", value: "Text me"}, element.style({"margin-top": "10px"})),
       ])
     }

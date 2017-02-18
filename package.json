@@ -17,7 +17,7 @@
     "web-host": "*"
   },
   "scripts": {
-    "start": "node start"
+    "start": "env $(cat CREDENTIALS | xargs) node start"
   },
   "repository": {
     "type": "git",
