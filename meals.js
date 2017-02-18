@@ -267,9 +267,17 @@ module.exports = library.export(
 
         document.querySelector(".shopping-list-items").innerHTML = html
 
-        document.querySelector("."+status+"-"+tag).classList.add("lit")
+        document.querySelectorAll("."+status+"-"+tag).forEach(light)
 
-        document.querySelector("."+opposite[status]+"-"+tag).classList.remove("lit")
+        function light(el) {
+          el.classList.add("lit")
+        }
+
+        document.querySelectorAll("."+opposite[status]+"-"+tag).forEach(unlight)
+
+        function unlight(el) {
+          el.classList.remove("lit")
+        }
       })
 
       bridge.see("meals/have", setStatus.withArgs("have"))
