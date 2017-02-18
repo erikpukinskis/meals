@@ -43,24 +43,24 @@ module.exports = library.export(
       ])
 
       var toggleListPosition = bridge.defineFunction(function() {
-        var list = document.querySelector(".shopping-list")
-        if (list.classList.contains("peek")) {
-          list.classList.delete("peek")
+        var listEl = document.querySelector(".shopping-list")
+        if (listEl.classList.contains("open")) {
+          listEl.classList.remove("open")
         } else {
-          list.classList.add("peek")
+          listEl.classList.add("open")
         }
       })
 
       var title = element(
         ".shopping-list-title",
-        "Shopping List",
-        {onclick: toggleListPosition.evalable()}
+        "Shopping List"
       )
 
-      var list = element(".shopping-list", [
-        title,
-        element(".shopping-list-items")
-      ])
+      var list = element(
+        ".shopping-list",
+        {onclick: toggleListPosition.evalable()},
+        [title, element(".shopping-list-items")]
+      )
 
       var page = element(saveForm, list, element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, listStyle, listTitleStyle))
 
@@ -117,23 +117,25 @@ module.exports = library.export(
 
     var shoppingListStyle = element.style(".shopping-list", {
       "position": "fixed",
-      "bottom": "-335px",
+      "bottom": "-235px",
       "transition": "bottom 100ms",
       "background-color": "white",
       "width": "200px",
-      "height": "400px",
+      "height": "300px",
       "line-height": "20px",
       "right": "20px",
       "box-shadow": "0px 2px 10px 5px rgba(195, 255, 240, 0.58)",
       "color": "#df",
+      "cursor": "pointer",
 
       "@media (min-width: 720px)": {
         "left": "500px",
       },
 
-      ".peek": {
-        "bottom": "-200px",
-      }
+      ".open": {
+        "bottom": "30px !important",
+        "width": "250px",
+      },
     })
 
     var cellStyle = element.style(".text-input", {
@@ -204,14 +206,20 @@ module.exports = library.export(
           shoppingList.delete(tag)
         }
 
-        console.log("list is", shoppingList)
         var html = ""
 
+        var height = 70 + shoppingList.size*44
+        console.log("height", height)
+        height = Math.max(300, height)
+
         shoppingList.forEach(function(tag) {
-          html += element(".shopping-list-item", tag.replace("-", " ")).html()
+          html = element(".shopping-list-item", tag.replace("-", " ")).html() + html
         })
 
-        document.querySelector(".shopping-list").classList.add("peek")
+        var listEl = document.querySelector(".shopping-list")
+        listEl.setAttribute("style", "height: "+height+"px; bottom: "+(165 - height).toString()+"px;")
+
+
 
         document.querySelector(".shopping-list-items").innerHTML = html
 
