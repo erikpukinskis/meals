@@ -2,12 +2,45 @@ var library = require("module-library")(require)
 
 module.exports = library.export(
   "meals",
-  ["web-element", "basic-styles", "browser-bridge", "./dashify", "make-request"],
-  function(element, basicStyles, BrowserBridge, dashify, makeRequest) {
+  ["web-element", "basic-styles", "browser-bridge", "./dashify", "make-request", "phone-person", "./upcoming-meals"],
+  function(element, basicStyles, BrowserBridge, dashify, makeRequest, phonePerson, upcomingMeals) {
+
+    function prepareSite(site) {
+      site.addRoute("get", "/meals", function(request, response) {
+        renderMeals(new BrowserBridge().forResponse(response))
+      })
+
+      site.addRoute("post", "/ingredients/:tag/:status", function(request, response) {       
+        var tag = request.params.tag
+        var status = request.params.status
+
+        response.json({ok: "yes"})
+      })
+
+      site.addRoute("post", "/meals/pantries", function(request, response) {
+
+        var number = request.body.phoneNumber
+
+        inPantry(number, pantry)
+
+        var shopper = phonePerson(number)
+
+
+
+        response.send("ok")
+      })
+    }
+
 
     function renderMeals(bridge) {
       basicStyles.addTo(bridge)
 
+
+      var saveForm = element("form", {method: "post", action: "/meals/pantries"}, [
+        element("p", "Text a link to yourself to save your pantry:"),
+        element("input", {type: "text", name: "phoneNumber", placeholder: "Phone number or email"}),
+        element("input", {type: "submit", value: "Text me"}, element.style({"margin-top": "10px"})),
+      ])
 
       var toggleListPosition = bridge.defineFunction(function() {
         var list = document.querySelector(".shopping-list")
@@ -29,7 +62,7 @@ module.exports = library.export(
         element(".shopping-list-items")
       ])
 
-      var page = element(list, element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, listStyle, listTitleStyle))
+      var page = element(saveForm, list, element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, listStyle, listTitleStyle))
 
       var preparations = []
       var sides = []
@@ -59,90 +92,7 @@ module.exports = library.export(
         page.addChild(elements)
       }
 
-
-
-
-      // Long term prep
-
-      prep(["soy beans"], "make tempeh")
-      prep(["mung beans"], "sprout them")
-
-
-      // Day 1
-
-      prep(["tomatoes"], "rinse and drain")
-
-      prep([
-        "1/2 cup chickpea flour",
-        "1/8 cup tahini",
-        "1/4 cup silken tofu, pressed half out",
-        "1 Tbsp olive oil",
-        "1/2 tsp kala namak",
-        "1 tsp nutritional yeast",
-        "cheesecloth",
-      ], "mix vegan egg")
-
-      prep(["1 1/2 cups all-purpose flour", "vegan egg"], "make pasta") // Dough: https://www.youtube.com/watch?v=ESz55eORW44
-
-      side(["hot chocolate mix"], "cocoa")
-      side(["lettuce", "onion"], "salad")
-      eat(["porcini", "mushrooms", "garlic"], "ravioli")
-
-      // Day 2
-      prep(["shitake", "porcini", "kombu", "carrot"], "make broth")
-      prep(["napa", "daikon", "korean paprika"], "prep kimchi")
-      prep(["flour"], "make dough")
-
-      eat(["scallion", "silken tofu", "ramen", "eggplant", "sesame seeds", "miso"], "ramen")
-
-      // Day 3
-      prep(["carrots", "celery", "oats", "hoisin"], "make oat paste")
-      prep(["beets"], "cook")
-      prep(["rice"], "cook")
-      prep(["tempeh", "onion", "tofu", "mung beans", "breadcrumbs"], "prep veggie patty")
-      prep(["dough"], "bake buns")
-      prep(["dough"], "bake bagels")
-      prep(["fennel", "nutmeg", "paprika", "thyme", "sage", "veggie bouillon", "gluten", "tempeh", "rice"], "prep sausage")
-      prep(["flour"], "make waffle batter")
-
-      eat(["lettuce", "tomato", "onion", "mayo", "mustart", "potato"], "veggie burger and fries")
-
-      // Day 4
-      eat(["fruit"], "waffles and sausage")
-
-      // Day 5
-      eat(["rice noodles", "cabbage", "peanuts", "basil", "cilantro"], "pad thai")
-
-      prep(["flour"], "dough")
-
-      // day 6        
-      prep(["dough"], "pizza dough")
-      prep(["paprika", "garlic", "oregano", "tempeh"], "pepperoni")
-      prep(["tomato"], "drain")
-
-      side(["lettuce"], "salad")
-      eat(["olive oil", "tofu", "artichoke", "olives", "miso", "sauerkraut"], "pizza")
-
-      // day 7
-      prep(["masa"], "tortillas")
-      prep(["cabbage", "cilantro"], "slaw")
-
-      eat(["mayo", "beer", "tofu", "paprika"], "tacos")
-
-      // day 8
-      prep(["beans"], "cook")
-      prep(["masa", "flour", "sugar"], "corn bread")
-
-      eat(["greens"], "beans and cornbread")
-
-      // day 9
-      prep(["tomato can"], "rinse")
-      prep(["gluten free crust"], "make")
-      prep(["rice"], "cook")
-      prep(["sauerkraut", "hoisin", "flour", "rice", "mayo", "firm tofu"], "fried cheese")
-      eat(["paprika", "oregano", "olive oil"], "gluten free vegan pizza")
-
-      // Taglierini technique: https://www.youtube.com/watch?v=IKe3uatYLmo 
+      upcomingMeals(prep, eat, side)
 
 
       bridge.send(page)
@@ -152,15 +102,7 @@ module.exports = library.export(
 
 
 
-    renderMeals.prepareSite = function(site) {
-      site.addRoute("get", "/meals", function(request, response) {
-        renderMeals(new BrowserBridge().forResponse(response))
-      })
-
-      site.addRoute("post", "/ingredients/:tag/:status", function(request, response) {        
-        response.json({ok: "yes"})
-      })
-    }
+    renderMeals.prepareSite = prepareSite
 
     var listStyle = element.style(".shopping-list-item, .shopping-list-title", {
       "border-bottom": "2px solid #c3ebff",
@@ -237,13 +179,17 @@ module.exports = library.export(
     function prepareBridge(bridge) {
       if (bridge.remember("meals/have")) return
 
-      var list = bridge.defineSingleton("shoppingList", function() {
+      var list = bridge.defineSingleton("shoppingList", function list() {
         return new Set()
       })
 
-      var setStatus = bridge.defineFunction([makeRequest.defineOn(bridge), element.defineOn(bridge), list], function setStatus(makeRequest, element, shoppingList, status, tag) {
+      var pantry = bridge.defineSingleton("pantry", function pantry() {
+        return new Set()
+      })
 
-        makeRequest("/ingredients/"+tag+"/"+status, {method: "post"})
+      var setStatus = bridge.defineFunction([makeRequest.defineOn(bridge), element.defineOn(bridge), list, pantry], function setStatus(makeRequest, element, shoppingList, pantry, status, tag) {
+
+        // makeRequest("/ingredients/"+tag+"/"+status, {method: "post"})
 
         var opposite = {
           "have": "need",
@@ -252,7 +198,9 @@ module.exports = library.export(
 
         if (status == "need") {
           shoppingList.add(tag)
-        } else {
+          pantry.delete(tag)
+        } else if (status == "have") {
+          pantry.add(tag)
           shoppingList.delete(tag)
         }
 
@@ -287,6 +235,10 @@ module.exports = library.export(
       
     }
 
+    function removeQuantity(ingredient) {
+      return ingredient.replace(/^[0-9]? ?[0-9]?\/?[0-9]? ?(cups|Tbsp|tsp|cup) ?/, "")
+    }
+
     function renderRows(bridge, ingredients, food, lastSelector) {
 
       prepareBridge(bridge)
@@ -295,7 +247,7 @@ module.exports = library.export(
 
       ingredients.forEach(function(ingredient, i) {
 
-        var tag = dashify(ingredient)
+        var tag = dashify(removeQuantity(ingredient))
         var lastOne = i == ingredients.length-1
 
         var row = element(".row", [

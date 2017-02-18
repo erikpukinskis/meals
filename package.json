@@ -8,7 +8,8 @@
     "web-element": "*",
     "basic-styles": "*",
     "browser-bridge": "*",
-    "make-request": "*"
+    "make-request": "*",
+    "phone-person": "*"
   },
   "devDependencies": {
     "web-host": "*"
