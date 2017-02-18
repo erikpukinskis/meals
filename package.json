@@ -7,7 +7,8 @@
     "module-library": "*",
     "web-element": "*",
     "basic-styles": "*",
-    "browser-bridge": "*"
+    "browser-bridge": "*",
+    "make-request": "*"
   },
   "devDependencies": {
     "web-host": "*"
