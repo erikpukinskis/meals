@@ -8,8 +8,12 @@ module.exports = library.export(
     function renderMeals(bridge) {
       basicStyles.addTo(bridge)
 
+      var list = element(".shopping-list", [
+        element(".shopping-list-title", "shopping list"),
+        element(".shopping-list-items")
+      ])
 
-      var page = element(element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry))
+      var page = element(list, element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, listStyle, listTitleStyle))
 
       var preparations = []
       var sides = []
@@ -140,8 +144,37 @@ module.exports = library.export(
       site.addRoute("post", "/ingredients/:tag/:status", function(request, response) {
 
         console.log(request.params.status, request.params.tag)
+        response.send({ok: "yes"})
       })
     }
+
+    var listStyle = element.style(".shopping-list-item, .shopping-list-title", {
+      "border-bottom": "2px solid #c3ebff",
+      "color": "#698",
+      "padding": "10px 20px",
+    })
+
+    var listTitleStyle = element.style(" .shopping-list-title", {
+      "padding-top": "20px",
+      "padding-bottom": "15px",
+    })
+
+    var shoppingListStyle = element.style(".shopping-list", {
+      "position": "fixed",
+      "bottom": "-310px",
+      "transition": "bottom 100ms",
+      "background-color": "white",
+      "width": "200px",
+      "height": "400px",
+      "line-height": "20px",
+      "left": "40%",
+      "box-shadow": "0px 2px 10px 5px rgba(195, 255, 240, 0.58)",
+      "color": "#df",
+
+      ".peek": {
+        "bottom": "-100px",
+      }
+    })
 
     var cellStyle = element.style(".text-input", {
       "border-bottom-color": "#aeecf3",
@@ -187,7 +220,11 @@ module.exports = library.export(
 
       if (!bridge.remember("meals/have")) {
 
-        var setStatus = bridge.defineFunction([makeRequest.defineOn(bridge)], function setStatus(makeRequest, status, tag) {
+        var list = bridge.defineSingleton("shoppingList", function() {
+          return new Set()
+        })
+
+        var setStatus = bridge.defineFunction([makeRequest.defineOn(bridge), element.defineOn(bridge), list], function setStatus(makeRequest, element, shoppingList, status, tag) {
 
           makeRequest("/ingredients/"+tag+"/"+status, {method: "post"})
 
@@ -195,6 +232,23 @@ module.exports = library.export(
             "have": "need",
             "need": "have",
           }
+
+          if (status == "need") {
+            shoppingList.add(tag)
+          } else {
+            shoppingList.delete(tag)
+          }
+
+          console.log("list is", shoppingList)
+          var html = ""
+
+          shoppingList.forEach(function(tag) {
+            html += element(".shopping-list-item", tag.replace("-", " ")).html()
+          })
+
+          document.querySelector(".shopping-list").classList.add("peek")
+
+          document.querySelector(".shopping-list-items").innerHTML = html
 
           document.querySelector("."+status+"-"+tag).classList.add("lit")
 
