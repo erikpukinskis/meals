@@ -8,8 +8,24 @@ module.exports = library.export(
     function renderMeals(bridge) {
       basicStyles.addTo(bridge)
 
+
+      var toggleListPosition = bridge.defineFunction(function() {
+        var list = document.querySelector(".shopping-list")
+        if (list.classList.contains("peek")) {
+          list.classList.delete("peek")
+        } else {
+          list.classList.add("peek")
+        }
+      })
+
+      var title = element(
+        ".shopping-list-title",
+        "Shopping List",
+        {onclick: toggleListPosition.evalable()}
+      )
+
       var list = element(".shopping-list", [
-        element(".shopping-list-title", "shopping list"),
+        title,
         element(".shopping-list-items")
       ])
 
@@ -161,7 +177,7 @@ module.exports = library.export(
 
     var shoppingListStyle = element.style(".shopping-list", {
       "position": "fixed",
-      "bottom": "-310px",
+      "bottom": "-335px",
       "transition": "bottom 100ms",
       "background-color": "white",
       "width": "200px",
@@ -172,7 +188,7 @@ module.exports = library.export(
       "color": "#df",
 
       ".peek": {
-        "bottom": "-100px",
+        "bottom": "-200px",
       }
     })
 
