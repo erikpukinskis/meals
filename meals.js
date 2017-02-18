@@ -45,9 +45,11 @@ module.exports = library.export(
       var toggleListPosition = bridge.defineFunction(function() {
         var listEl = document.querySelector(".shopping-list")
         if (listEl.classList.contains("open")) {
+          listEl.classList.add("closed")
           listEl.classList.remove("open")
         } else {
           listEl.classList.add("open")
+          listEl.classList.remove("closed")
         }
       })
 
@@ -130,6 +132,11 @@ module.exports = library.export(
 
       "@media (min-width: 720px)": {
         "left": "500px",
+      },
+
+      ".closed": {
+        "height": "300px !important",
+        "bottom": "-100px !important",
       },
 
       ".open": {
