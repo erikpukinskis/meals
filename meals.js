@@ -213,17 +213,17 @@ module.exports = library.export(
       console.log("universe is ready")
     })
 
-    myPantry("hg3a")
-    myPantry.ingredient("hg3a", "soy-beans", "need")
-    myPantry.ingredient("hg3a", "mung-beans", "need")
-    myPantry.ingredient("hg3a", "canned-tomatoes", "have")
-    myPantry.suggestPhone("hg3a", "14")
+    myPantry("test")
+    myPantry.ingredient("test", "soy-beans", "need")
+    myPantry.ingredient("test", "mung-beans", "need")
+    myPantry.ingredient("test", "canned-tomatoes", "have")
+    myPantry.suggestPhone("test", "14")
     myPantry("dxdg")
-    myPantry.ingredient("hg3a", "soy-beans", "need")
-    myPantry.ingredient("hg3a", "mung-beans", "need")
-    myPantry.ingredient("hg3a", "canned-tomatoes", "need")
-    myPantry.ingredient("hg3a", "chickpea-flour", "need")
-    myPantry.ingredient("hg3a", "tahini", "have")
+    myPantry.ingredient("test", "soy-beans", "need")
+    myPantry.ingredient("test", "mung-beans", "need")
+    myPantry.ingredient("test", "canned-tomatoes", "need")
+    myPantry.ingredient("test", "chickpea-flour", "need")
+    myPantry.ingredient("test", "tahini", "have")
 
 
     function renderMeals(bridge, pantry) {
@@ -413,6 +413,8 @@ module.exports = library.export(
 
       site.addRoute("post", "/pantries", function(request, response) {
 
+        var name = request.body.pantryName
+
         var number = request.body.phoneNumber
         var id = request.body.pantryId
 
@@ -423,9 +425,10 @@ module.exports = library.export(
 
         pantry.isTemporary = false
 
+        myPantry.suggestPhone(pantry.id, number)
+
         pantry.copyTo(tellTheUniverse)
 
-        myPantry.suggestPhone(pantry.id, number)
 
         tellTheUniverse("myPantry.suggestPhone", pantry.id, number)
 
@@ -440,10 +443,10 @@ module.exports = library.export(
 
     function saveForm(pantryId) {
       return element("form", {method: "post", action: "/pantries"}, [
-        element("input", {type: "text", value: "My pantry"}),
         element("p", "Text a link to yourself to save your pantry:"),
         element("input", {type: "text", name: "phoneNumber", placeholder: "Phone number or email"}),
         element("input", {type: "hidden", name: "pantryId", value: pantryId}),
+        // element("input", {type: "text", name: "pantryName", placeholder: "Name it (optional)"}),
         element("input", {type: "submit", value: "Text me"}, element.style({"margin-top": "10px"})),
       ])
     }
@@ -470,7 +473,7 @@ module.exports = library.export(
     }
 
     function renderListItem(tag) {
-      var text = tag.replace("-", " ")
+      var text = tag.replace(/-/g, " ")
       var el = element(".shopping-list-item", text)
       el.addSelector(".shopping-list-item-"+tag)
       return el
