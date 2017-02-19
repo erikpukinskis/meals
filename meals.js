@@ -204,8 +204,8 @@ library.define(
 
 module.exports = library.export(
   "meals",
-  ["web-element", "basic-styles", "browser-bridge", "make-request", "phone-person", "./upcoming-meals", "identifiable", "tell-the-universe", "my-pantry", "fill-pantry", "add-html", "function-call"],
-  function(element, basicStyles, BrowserBridge, makeRequest, phonePerson, eriksUpcoming, identifiable, tellTheUniverse, myPantry, fillPantry, addHtml, functionCall) {
+  ["web-element", "basic-styles", "browser-bridge", "make-request", "phone-person", "./upcoming-meals", "identifiable", "tell-the-universe", "my-pantry", "fill-pantry", "add-html", "function-call", "./popup"],
+  function(element, basicStyles, BrowserBridge, makeRequest, phonePerson, eriksUpcoming, identifiable, tellTheUniverse, myPantry, fillPantry, addHtml, functionCall, popup) {
 
     tellTheUniverse = tellTheUniverse.called("meals").withNames({"myPantry": "my-pantry"})
 
@@ -267,7 +267,7 @@ module.exports = library.export(
       page.addChildren([
         shoppingListOverlay(bridge, pantry.shoppingList()),
         week,
-        element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle, popupContainer, popup)
+        element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle)
       ])
 
       bridge.send(page)
@@ -278,25 +278,6 @@ module.exports = library.export(
 
     function prepareBridge(bridge) {
       if (bridge.remember("meals/have")) return
-
-      var toggleShoppingList = bridge.defineFunction(function toggleShoppingList(e) {
-
-        e.preventDefault()
-        var containerEl = document.querySelector(".popup-container")
-
-        if (containerEl.classList.contains("open")) {
-          document.body.style.overflow = "scroll"
-          containerEl.classList.add("peek")
-          containerEl.classList.remove("open")
-        } else {
-          document.body.style.overflow = "hidden"
-          containerEl.classList.add("open")
-          containerEl.classList.remove("peek")
-        }
-      })
-
-      bridge.see("meals/toggleShoppingList", toggleShoppingList)
-
 
       var setStatus = bridge.defineFunction([
         makeRequest.defineOn(bridge),
@@ -469,16 +450,9 @@ module.exports = library.export(
 
 
     function shoppingListOverlay(bridge, tags) {
-      var toggle = bridge.remember("meals/toggleShoppingList").withArgs(functionCall.raw("event"))
-
-      console.log("eval", toggle.evalable())
-
-      if (!toggle) {
-        throw new Error("boo: "+bridge.id)
-      }
 
       var shoppingListEl = element(
-        ".shopping-list.popup",
+        ".shopping-list",
         element(
           ".shopping-list-title",
           "Shopping List"
@@ -486,9 +460,7 @@ module.exports = library.export(
         element(".shopping-list-items", tags.map(renderListItem))
       )
 
-      var container = element(".popup-container",
-        {onclick: toggle.evalable()},
-       shoppingListEl)
+      var container = popup(bridge, shoppingListEl)
 
       if (tags.length > 0) {
         container.addSelector(".peek")
@@ -515,29 +487,6 @@ module.exports = library.export(
       "padding-bottom": "15px",
     })
 
-    var popupContainer = element.style(".popup-container", {
-      "position": "fixed",
-      "bottom": "70px",
-      "left": "0",
-      "height": "0",
-      "width": "100%",
-
-      ".open": {
-        "height": "100%",
-        "bottom": "0",
-        "overflow": "scroll",
-        "background": "rgba(0,0,0,0.5)",
-      },
-
-      ".peek": {
-        "bottom": "200px",
-      },
-    })
-
-    var popup = element.style(".popup-container.open .popup", {
-      "float": "none",
-      "margin": "100px auto",
-    })
 
     var shoppingListStyle = element.style(".shopping-list", {
       "float": "right",
