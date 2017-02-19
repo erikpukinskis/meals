@@ -12,13 +12,15 @@
     "phone-person": "*",
     "identifiable": "*",
     "tell-the-universe": "*",
-    "add-html": "*"
+    "add-html": "*",
+    "function-call": "*"
   },
   "devDependencies": {
     "web-host": "*"
   },
   "scripts": {
-    "start": "env $(cat CREDENTIALS | xargs) node start"
+    "start": "node start",
+    "production": "env $(cat CREDENTIALS | xargs) node start"
   },
   "repository": {
     "type": "git",

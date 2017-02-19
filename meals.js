@@ -204,14 +204,27 @@ library.define(
 
 module.exports = library.export(
   "meals",
-  ["web-element", "basic-styles", "browser-bridge", "make-request", "phone-person", "./upcoming-meals", "identifiable", "tell-the-universe", "my-pantry", "fill-pantry", "add-html"],
-  function(element, basicStyles, BrowserBridge, makeRequest, phonePerson, eriksUpcoming, identifiable, tellTheUniverse, myPantry, fillPantry, addHtml) {
+  ["web-element", "basic-styles", "browser-bridge", "make-request", "phone-person", "./upcoming-meals", "identifiable", "tell-the-universe", "my-pantry", "fill-pantry", "add-html", "function-call"],
+  function(element, basicStyles, BrowserBridge, makeRequest, phonePerson, eriksUpcoming, identifiable, tellTheUniverse, myPantry, fillPantry, addHtml, functionCall) {
 
     tellTheUniverse = tellTheUniverse.called("meals").withNames({"myPantry": "my-pantry"})
 
     tellTheUniverse.load(function() {
       console.log("universe is ready")
     })
+
+    myPantry("hg3a")
+    myPantry.ingredient("hg3a", "soy-beans", "need")
+    myPantry.ingredient("hg3a", "mung-beans", "need")
+    myPantry.ingredient("hg3a", "canned-tomatoes", "have")
+    myPantry.suggestPhone("hg3a", "14")
+    myPantry("dxdg")
+    myPantry.ingredient("hg3a", "soy-beans", "need")
+    myPantry.ingredient("hg3a", "mung-beans", "need")
+    myPantry.ingredient("hg3a", "canned-tomatoes", "need")
+    myPantry.ingredient("hg3a", "chickpea-flour", "need")
+    myPantry.ingredient("hg3a", "tahini", "have")
+
 
     function renderMeals(bridge, pantry) {
 
@@ -254,7 +267,7 @@ module.exports = library.export(
       page.addChildren([
         shoppingListOverlay(bridge, pantry.shoppingList()),
         week,
-        element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle)
+        element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle, popupContainer, popup)
       ])
 
       bridge.send(page)
@@ -266,16 +279,19 @@ module.exports = library.export(
     function prepareBridge(bridge) {
       if (bridge.remember("meals/have")) return
 
-      var toggleShoppingList = bridge.defineFunction(function toggleShoppingList() {
-        var listEl = document.querySelector(".shopping-list")
-        if (listEl.classList.contains("open")) {
+      var toggleShoppingList = bridge.defineFunction(function toggleShoppingList(e) {
+
+        e.preventDefault()
+        var containerEl = document.querySelector(".popup-container")
+
+        if (containerEl.classList.contains("open")) {
           document.body.style.overflow = "scroll"
-          listEl.classList.add("peek")
-          listEl.classList.remove("open")
+          containerEl.classList.add("peek")
+          containerEl.classList.remove("open")
         } else {
           document.body.style.overflow = "hidden"
-          listEl.classList.add("open")
-          listEl.classList.remove("peek")
+          containerEl.classList.add("open")
+          containerEl.classList.remove("peek")
         }
       })
 
@@ -453,14 +469,16 @@ module.exports = library.export(
 
 
     function shoppingListOverlay(bridge, tags) {
-      var toggle = bridge.remember("meals/toggleShoppingList")
+      var toggle = bridge.remember("meals/toggleShoppingList").withArgs(functionCall.raw("event"))
+
+      console.log("eval", toggle.evalable())
+
       if (!toggle) {
         throw new Error("boo: "+bridge.id)
       }
 
       var shoppingListEl = element(
-        ".shopping-list",
-        {onclick: toggle.evalable()},
+        ".shopping-list.popup",
         element(
           ".shopping-list-title",
           "Shopping List"
@@ -468,11 +486,15 @@ module.exports = library.export(
         element(".shopping-list-items", tags.map(renderListItem))
       )
 
+      var container = element(".popup-container",
+        {onclick: toggle.evalable()},
+       shoppingListEl)
+
       if (tags.length > 0) {
-        shoppingListEl.addSelector(".peek")
+        container.addSelector(".peek")
       }
 
-      return shoppingListEl
+      return container
     }
 
     function renderListItem(tag) {
@@ -493,33 +515,44 @@ module.exports = library.export(
       "padding-bottom": "15px",
     })
 
-    var shoppingListStyle = element.style(".shopping-list", {
+    var popupContainer = element.style(".popup-container", {
       "position": "fixed",
-      "bottom": "-235px",
+      "bottom": "70px",
+      "left": "0",
+      "height": "0",
+      "width": "100%",
+
+      ".open": {
+        "height": "100%",
+        "bottom": "0",
+        "overflow": "scroll",
+        "background": "rgba(0,0,0,0.5)",
+      },
+
+      ".peek": {
+        "bottom": "200px",
+      },
+    })
+
+    var popup = element.style(".popup-container.open .popup", {
+      "float": "none",
+      "margin": "100px auto",
+    })
+
+    var shoppingListStyle = element.style(".shopping-list", {
+      "float": "right",
+      "margin": "20px",
+      "padding-bottom": "10px",
       "min-height": "300px",
-      "max-height": "500px",
-      "overflow": "scroll",
-      "transition": "bottom 100ms",
       "background-color": "white",
       "width": "200px",
       "line-height": "20px",
-      "right": "20px",
       "box-shadow": "0px 2px 10px 5px rgba(138, 193, 179, 0.19)",
       "color": "#df",
       "cursor": "pointer",
 
       "@media (min-width: 720px)": {
         "left": "500px",
-      },
-
-      ".peek": {
-        "height": "300px !important",
-        "bottom": "-100px !important",
-      },
-
-      ".open": {
-        "bottom": "30px !important",
-        "width": "250px",
       },
     })
 
