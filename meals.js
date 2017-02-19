@@ -267,7 +267,7 @@ module.exports = library.export(
       page.addChildren([
         shoppingListOverlay(bridge, pantry.shoppingList()),
         week,
-        element.stylesheet(cellStyle, foodStyle,mealStyle, togglePurchase, togglePantry, shoppingListStyle, ruledItem, listTitleStyle)
+        element.stylesheet(cellStyle, foodStyle, mealStyle, togglePurchase, togglePantry, shoppingListStyle, bigListStyle, ruledItem, listTitleStyle)
       ])
 
       bridge.send(page)
@@ -279,14 +279,31 @@ module.exports = library.export(
     function prepareBridge(bridge) {
       if (bridge.remember("meals/have")) return
 
+      var crossOff = bridge.defineFunction(function crossOff(tag) {
+        var line = document.querySelector(".shopping-list-item-"+tag)
+
+        var isChecked = line.classList.contains("checked")
+
+        if (isChecked) {
+          line.classList.remove("checked")
+        } else {
+          line.classList.add("checked")
+        }
+      })
+
+      bridge.see("meals/crossOff", crossOff)
+
+
+      var renderItem = bridge.defineFunction([crossOff.asBinding()], renderShoppingListItem)
+
       var setStatus = bridge.defineFunction([
         makeRequest.defineOn(bridge),
         element.defineOn(bridge),
         addHtml.defineOn(bridge),
         bridge.remember("meals/shoppingListSingleton"),
         bridge.remember("meals/pantrySingleton"),
-        bridge.defineFunction(renderListItem)
-      ], function setStatus(makeRequest, element, addHtml, shoppingList, pantry, renderListItem, status, tag) {
+        renderItem,
+      ], function setStatus(makeRequest, element, addHtml, shoppingList, pantry, renderItem, status, tag) {
 
         var update = {
           status: status,
@@ -312,7 +329,7 @@ module.exports = library.export(
           shoppingList.add(tag)
           pantry.delete(tag)
 
-          var listItemEl = renderListItem(tag)
+          var listItemEl = renderItem(tag)
 
           addHtml.inside(".shopping-list-items", listItemEl.html())
 
@@ -370,7 +387,7 @@ module.exports = library.export(
 
       bridge.see("meals/need",
         setStatus.withArgs("need"))
-      
+    
     }
 
     renderMeals.prepareSite = prepareSite
@@ -454,13 +471,17 @@ module.exports = library.export(
 
     function shoppingListOverlay(bridge, tags) {
 
+
+      var renderItem = renderShoppingListItem.bind(null, bridge.remember("meals/crossOff"))
+
+
       var shoppingListEl = element(
         ".shopping-list",
         element(
           ".shopping-list-title",
           "Shopping List"
         ),
-        element(".shopping-list-items", tags.map(renderListItem))
+        element(".shopping-list-items", tags.map(renderItem))
       )
 
       var container = popup(bridge, shoppingListEl)
@@ -472,22 +493,33 @@ module.exports = library.export(
       return container
     }
 
-    function renderListItem(tag) {
+    function renderShoppingListItem(crossOff, tag) {
       var text = tag.replace(/-/g, " ")
-      var el = element(".shopping-list-item", text)
-      el.addSelector(".shopping-list-item-"+tag)
+
+      var el = element(
+        ".shopping-list-item.shopping-list-item-"+tag,
+        text,
+        {onclick: crossOff.withArgs(tag).evalable()}
+      )
+
       return el
     }
 
-    var ruledItem = element.style(".shopping-list-item, .shopping-list-title", {
+    var ruledItem = element.style(".shopping-list-item", {
       "border-bottom": "2px solid #c3ebff",
       "color": "#6be",
       "padding": "10px 20px",
+
+      ".checked": {
+        "text-decoration": "line-through",
+        "color": "#cacaca",
+      },
     })
 
     var listTitleStyle = element.style(" .shopping-list-title", {
-      "padding-top": "20px",
-      "padding-bottom": "15px",
+      "border-bottom": "2px solid #c3ebff",
+      "color": "#6be",
+      "padding": "20px 20px 10px 20px",
     })
 
 
@@ -507,6 +539,11 @@ module.exports = library.export(
         "left": "500px",
       },
     })
+
+    var bigListStyle = element.style(
+      ".popup-container.open .shopping-list", {
+        "width": "250px",
+      })
 
     var cellStyle = element.style(".text-input", {
       "border-bottom-color": "#aeecf3",

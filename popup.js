@@ -30,9 +30,15 @@ module.exports = library.export(
       var toggle = bridge.defineFunction(function togglePopup(e) {
 
         e.preventDefault()
+
         var containerEl = document.querySelector(".popup-container")
 
-        if (containerEl.classList.contains("open")) {
+        var isOpen = containerEl.classList.contains("open")
+
+        if (isOpen && !e.srcElement.classList.contains("popup-container")) { return }
+
+
+        if (isOpen) {
           document.body.style.overflow = "scroll"
           containerEl.classList.add("peek")
           containerEl.classList.remove("open")
