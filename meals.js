@@ -269,9 +269,11 @@ module.exports = library.export(
       var toggleShoppingList = bridge.defineFunction(function toggleShoppingList() {
         var listEl = document.querySelector(".shopping-list")
         if (listEl.classList.contains("open")) {
+          document.body.style.overflow = "scroll"
           listEl.classList.add("peek")
           listEl.classList.remove("open")
         } else {
+          document.body.style.overflow = "hidden"
           listEl.classList.add("open")
           listEl.classList.remove("peek")
         }
@@ -495,6 +497,8 @@ module.exports = library.export(
       "position": "fixed",
       "bottom": "-235px",
       "min-height": "300px",
+      "max-height": "500px",
+      "overflow": "scroll",
       "transition": "bottom 100ms",
       "background-color": "white",
       "width": "200px",
